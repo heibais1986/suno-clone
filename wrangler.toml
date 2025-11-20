@@ -1,5 +1,4 @@
 name = "creative-studio"
-main = "./index.tsx"
 compatibility_date = "2025-11-20"
 
 d1_databases = [
