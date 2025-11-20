@@ -89,6 +89,9 @@ export const TRANSLATIONS = {
   }
 };
 
+// Using a free creative commons audio sample for demonstration
+const DEMO_AUDIO = "https://cdn.freesound.org/previews/719/719349_5034008-lq.mp3";
+
 const SAMPLE_SONGS_EN: Song[] = [
   {
     id: "1",
@@ -98,6 +101,7 @@ const SAMPLE_SONGS_EN: Song[] = [
     style: "Synthwave • Chill",
     duration: "3:20",
     plays: 145000,
+    audioUrl: DEMO_AUDIO
   },
   {
     id: "2",
@@ -107,6 +111,7 @@ const SAMPLE_SONGS_EN: Song[] = [
     style: "Lofi Hip Hop",
     duration: "2:15",
     plays: 89000,
+    audioUrl: DEMO_AUDIO
   },
   {
     id: "3",
@@ -116,6 +121,7 @@ const SAMPLE_SONGS_EN: Song[] = [
     style: "Funk • Electronic",
     duration: "4:05",
     plays: 23000,
+    audioUrl: DEMO_AUDIO
   },
   {
     id: "4",
@@ -125,6 +131,7 @@ const SAMPLE_SONGS_EN: Song[] = [
     style: "Ambient • Deep House",
     duration: "5:12",
     plays: 12000,
+    audioUrl: DEMO_AUDIO
   },
   {
     id: "5",
@@ -134,6 +141,7 @@ const SAMPLE_SONGS_EN: Song[] = [
     style: "Drum & Bass",
     duration: "3:45",
     plays: 67000,
+    audioUrl: DEMO_AUDIO
   },
   {
     id: "6",
@@ -143,6 +151,7 @@ const SAMPLE_SONGS_EN: Song[] = [
     style: "Orchestral Pop",
     duration: "3:30",
     plays: 210000,
+    audioUrl: DEMO_AUDIO
   },
   {
     id: "7",
@@ -152,6 +161,7 @@ const SAMPLE_SONGS_EN: Song[] = [
     style: "Hyperpop • Glitchcore",
     duration: "2:05",
     plays: 45000,
+    audioUrl: DEMO_AUDIO
   },
   {
     id: "8",
@@ -161,6 +171,7 @@ const SAMPLE_SONGS_EN: Song[] = [
     style: "World • Acoustic",
     duration: "4:10",
     plays: 32000,
+    audioUrl: DEMO_AUDIO
   },
   {
     id: "9",
@@ -170,6 +181,7 @@ const SAMPLE_SONGS_EN: Song[] = [
     style: "Industrial Rock",
     duration: "3:55",
     plays: 98000,
+    audioUrl: DEMO_AUDIO
   },
   {
     id: "10",
@@ -179,6 +191,7 @@ const SAMPLE_SONGS_EN: Song[] = [
     style: "Indie Pop",
     duration: "3:15",
     plays: 156000,
+    audioUrl: DEMO_AUDIO
   }
 ];
 
@@ -191,6 +204,7 @@ const SAMPLE_SONGS_ZH: Song[] = [
     style: "合成波 • 治愈",
     duration: "3:20",
     plays: 145000,
+    audioUrl: DEMO_AUDIO
   },
   {
     id: "2",
@@ -200,6 +214,7 @@ const SAMPLE_SONGS_ZH: Song[] = [
     style: "低保真嘻哈",
     duration: "2:15",
     plays: 89000,
+    audioUrl: DEMO_AUDIO
   },
   {
     id: "3",
@@ -209,6 +224,7 @@ const SAMPLE_SONGS_ZH: Song[] = [
     style: "放克 • 电子",
     duration: "4:05",
     plays: 23000,
+    audioUrl: DEMO_AUDIO
   },
   {
     id: "4",
@@ -218,6 +234,7 @@ const SAMPLE_SONGS_ZH: Song[] = [
     style: "氛围 • 深宅",
     duration: "5:12",
     plays: 12000,
+    audioUrl: DEMO_AUDIO
   },
   {
     id: "5",
@@ -227,6 +244,7 @@ const SAMPLE_SONGS_ZH: Song[] = [
     style: "鼓与贝斯",
     duration: "3:45",
     plays: 67000,
+    audioUrl: DEMO_AUDIO
   },
   {
     id: "6",
@@ -236,6 +254,7 @@ const SAMPLE_SONGS_ZH: Song[] = [
     style: "管弦流行",
     duration: "3:30",
     plays: 210000,
+    audioUrl: DEMO_AUDIO
   },
   {
     id: "7",
@@ -245,6 +264,7 @@ const SAMPLE_SONGS_ZH: Song[] = [
     style: "超流行 • 故障核",
     duration: "2:05",
     plays: 45000,
+    audioUrl: DEMO_AUDIO
   },
   {
     id: "8",
@@ -254,6 +274,7 @@ const SAMPLE_SONGS_ZH: Song[] = [
     style: "世界音乐 • 原声",
     duration: "4:10",
     plays: 32000,
+    audioUrl: DEMO_AUDIO
   },
   {
     id: "9",
@@ -263,6 +284,7 @@ const SAMPLE_SONGS_ZH: Song[] = [
     style: "工业摇滚",
     duration: "3:55",
     plays: 98000,
+    audioUrl: DEMO_AUDIO
   },
   {
     id: "10",
@@ -272,6 +294,7 @@ const SAMPLE_SONGS_ZH: Song[] = [
     style: "独立流行",
     duration: "3:15",
     plays: 156000,
+    audioUrl: DEMO_AUDIO
   }
 ];
 

@@ -6,10 +6,11 @@ export interface Song {
   artist: string;
   imageUrl: string;
   style: string;
-  duration: string;
+  duration: string; // Display string like "3:20"
   plays: number;
   lyrics?: string;
   isGenerated?: boolean;
+  audioUrl: string; // URL to the audio file (R2 or other source)
 }
 
 export interface GenerationState {

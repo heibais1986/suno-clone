@@ -4,6 +4,9 @@ import { Song, Language } from "../types";
 // Helper to generate a random ID
 const generateId = () => Math.random().toString(36).substring(2, 15);
 
+// Dummy audio for generated tracks (since Gemini generates text/images, not audio files directly yet)
+const DEMO_GENERATED_AUDIO = "https://cdn.freesound.org/previews/719/719349_5034008-lq.mp3";
+
 export const generateSongConcept = async (prompt: string, language: Language = 'en'): Promise<Song> => {
   try {
     // For Cloudflare Pages or Vercel deployment:
@@ -75,6 +78,7 @@ export const generateSongConcept = async (prompt: string, language: Language = '
       plays: 0,
       lyrics: data.lyrics,
       isGenerated: true,
+      audioUrl: DEMO_GENERATED_AUDIO // In a real app, you would generate audio here or fetch a stream
     };
   } catch (error) {
     console.error("Gemini generation failed:", error);
@@ -91,6 +95,7 @@ export const generateSongConcept = async (prompt: string, language: Language = '
         ? "请检查 API Key 是否配置正确 (Cloudflare 环境变量)。\n错误信息: " + (error instanceof Error ? error.message : String(error))
         : "Please check if API Key is configured correctly in Cloudflare Environment Variables.\nError: " + (error instanceof Error ? error.message : String(error)),
       isGenerated: true,
+      audioUrl: ""
     };
   }
 };
