@@ -48,6 +48,11 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
       return new Response(JSON.stringify({ error: "Invalid input" }), { status: 400 });
     }
 
+    // MOCK MODE: If DB is not bound (e.g. local dev without wrangler setup), return success
+    if (!env.DB) {
+        return new Response(JSON.stringify({ success: true, warning: "Mock Mode: No DB attached" }), { status: 201 });
+    }
+
     // Simple hashing for demo (Use bcrypt/argon2 in production with proper polyfills)
     const myText = new TextEncoder().encode(password + "SALT_SECRET"); // Use a real secret env var
     const hashBuffer = await crypto.subtle.digest('SHA-256', myText);
@@ -72,6 +77,10 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
     }
 
   } catch (e) {
-    return new Response(JSON.stringify({ error: e instanceof Error ? e.message : "Server Error" }), { status: 500 });
+    // Ensure we return JSON even on crash
+    return new Response(JSON.stringify({ error: e instanceof Error ? e.message : "Server Error" }), { 
+        status: 500,
+        headers: { 'Content-Type': 'application/json' }
+    });
   }
 }
