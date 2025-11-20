@@ -58,8 +58,8 @@ const App: React.FC = () => {
              <section>
                <div className="flex items-center justify-between mb-6 px-2">
                  <div className="flex items-baseline gap-4">
-                    <h2 className="text-2xl font-bold">{t.trending}</h2>
-                    <span className="text-sm text-zinc-500 hidden md:inline-block">{t.global}</span>
+                    <h2 className="text-2xl font-bold hover:text-white cursor-pointer transition-colors">{t.trending}</h2>
+                    <span className="text-sm text-zinc-500 hidden md:inline-block cursor-pointer hover:text-zinc-300 transition-colors">{t.global}</span>
                  </div>
                  <button className="text-sm font-medium text-zinc-400 hover:text-white transition-colors flex items-center gap-1">
                     {t.loadMore} <ChevronRight className="w-4 h-4" />
@@ -67,9 +67,9 @@ const App: React.FC = () => {
                </div>
                
                {/* Horizontal Scroll Container */}
-               <div className="flex gap-4 overflow-x-auto pb-6 -mx-6 px-6 scrollbar-hide snap-x">
+               <div className="flex gap-5 overflow-x-auto pb-8 -mx-6 px-6 scrollbar-hide snap-x">
                  {trendingSongs.map((song) => (
-                   <div key={song.id} className="min-w-[240px] w-[240px] snap-start">
+                   <div key={song.id} className="min-w-[220px] md:min-w-[240px] snap-start">
                      <SongCard 
                         song={song} 
                         onClick={setCurrentSong}
@@ -83,15 +83,15 @@ const App: React.FC = () => {
              {/* New Releases Section */}
              <section>
                <div className="flex items-center justify-between mb-6 px-2">
-                 <h2 className="text-2xl font-bold">{language === 'zh' ? '最新发布' : 'New Arrivals'}</h2>
+                 <h2 className="text-2xl font-bold hover:text-white cursor-pointer transition-colors">{language === 'zh' ? '最新发布' : 'New Arrivals'}</h2>
                  <button className="text-sm font-medium text-zinc-400 hover:text-white transition-colors flex items-center gap-1">
                     {t.loadMore} <ChevronRight className="w-4 h-4" />
                  </button>
                </div>
                
-               <div className="flex gap-4 overflow-x-auto pb-6 -mx-6 px-6 scrollbar-hide snap-x">
+               <div className="flex gap-5 overflow-x-auto pb-8 -mx-6 px-6 scrollbar-hide snap-x">
                  {newReleases.map((song) => (
-                   <div key={`new-${song.id}`} className="min-w-[240px] w-[240px] snap-start">
+                   <div key={`new-${song.id}`} className="min-w-[220px] md:min-w-[240px] snap-start">
                      <SongCard 
                         song={song} 
                         onClick={setCurrentSong}
