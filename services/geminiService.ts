@@ -6,10 +6,14 @@ const generateId = () => Math.random().toString(36).substring(2, 15);
 
 export const generateSongConcept = async (prompt: string, language: Language = 'en'): Promise<Song> => {
   try {
+    // For Cloudflare Pages or Vercel deployment:
+    // Ensure you have set the 'API_KEY' environment variable in your project settings.
     const apiKey = process.env.API_KEY;
+    
     if (!apiKey) {
-        // Fallback mock for demo if no key provided in environment
-        throw new Error("API Key not found");
+        console.error("CRITICAL: API Key is missing.");
+        console.error("Deployment Hint: If using Cloudflare Pages, go to Settings -> Environment Variables and add 'API_KEY'.");
+        throw new Error("API Key not found in environment variables.");
     }
 
     const ai = new GoogleGenAI({ apiKey });
@@ -80,10 +84,12 @@ export const generateSongConcept = async (prompt: string, language: Language = '
       title: language === 'zh' ? "生成失败" : "Error Generating Song",
       artist: "System",
       imageUrl: "https://picsum.photos/400/400",
-      style: "Glitch Noise",
+      style: "System Error",
       duration: "0:00",
       plays: 0,
-      lyrics: language === 'zh' ? "暂时无法生成歌词。" : "Could not generate lyrics at this time.",
+      lyrics: language === 'zh' 
+        ? "请检查 API Key 是否配置正确 (Cloudflare 环境变量)。\n错误信息: " + (error instanceof Error ? error.message : String(error))
+        : "Please check if API Key is configured correctly in Cloudflare Environment Variables.\nError: " + (error instanceof Error ? error.message : String(error)),
       isGenerated: true,
     };
   }

@@ -33,7 +33,7 @@ const Navbar: React.FC<NavbarProps> = ({ language, setLanguage }) => {
           <div className="w-8 h-8 bg-white rounded-full flex items-center justify-center group-hover:scale-110 transition-transform">
             <Music className="w-5 h-5 text-black" strokeWidth={3} />
           </div>
-          <span className="text-xl font-bold tracking-tight">Suno Clone</span>
+          <span className="text-xl font-bold tracking-tight">{t.title}</span>
         </div>
 
         {/* Desktop Links */}

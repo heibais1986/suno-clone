@@ -3,6 +3,7 @@ import { Song, Language } from "./types";
 export const TRANSLATIONS = {
   en: {
     navbar: {
+      title: "Creative Studio",
       showcase: "Showcase",
       create: "Create",
       library: "Library",
@@ -20,7 +21,7 @@ export const TRANSLATIONS = {
         "a summer road trip",
         "late night coding"
       ],
-      description: "From your mind to music. Suno is building a future where anyone can make great music. Powered by advanced audio generation models.",
+      description: "From your mind to music. We are building a future where anyone can make great music. Powered by advanced audio generation models.",
     },
     create: {
       placeholder: "Describe the song you want to create... (e.g. 'A sad song about a robot in the rain')",
@@ -45,6 +46,7 @@ export const TRANSLATIONS = {
   },
   zh: {
     navbar: {
+      title: "创意工作室",
       showcase: "精选",
       create: "创作",
       library: "曲库",
@@ -62,7 +64,7 @@ export const TRANSLATIONS = {
         "夏日的海边公路",
         "深夜写代码的快乐"
       ],
-      description: "从灵感到旋律。Suno 正在构建一个任何人都能创作伟大音乐的未来。由先进的 Gemini 音频生成模型驱动。",
+      description: "从灵感到旋律。我们正在构建一个任何人都能创作伟大音乐的未来。由先进的 Gemini 音频生成模型驱动。",
     },
     create: {
       placeholder: "描述你想创作的歌曲... (例如：'一首关于机器人在雨中哭泣的悲伤歌曲')",
