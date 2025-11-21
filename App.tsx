@@ -84,7 +84,7 @@ const App: React.FC = () => {
         } else if (currentIndex < allDisplaySongs.length - 1) {
             nextSong = allDisplaySongs[currentIndex + 1];
         } else {
-            // End of list -> Loop back to start (Repeat All behavior is default for Next button)
+            // End of list -> Loop back to start
             nextSong = allDisplaySongs[0];
         }
     }
@@ -95,10 +95,7 @@ const App: React.FC = () => {
   const handlePrev = () => {
     if (!currentSong || allDisplaySongs.length === 0) return;
 
-    // Previous always goes to previous in list for UX consistency, unless strict history is needed.
-    // Even in shuffle mode, users often expect 'Previous' to go to the previous track in the visual list
-    // OR the previously played track. For simplicity, we use list order.
-    
+    // Previous always goes to previous in list for UX consistency
     const currentIndex = allDisplaySongs.findIndex(s => s.id === currentSong.id);
     
     let prevSong: Song;
@@ -111,12 +108,33 @@ const App: React.FC = () => {
     setCurrentSong(prevSong);
   };
 
-  const toggleShuffle = () => setIsShuffle(!isShuffle);
+  // --- Mutual Exclusivity Logic ---
+
+  const toggleShuffle = () => {
+    if (isShuffle) {
+      // Turning off shuffle
+      setIsShuffle(false);
+    } else {
+      // Turning on shuffle -> Force repeat OFF (Mutually Exclusive)
+      setIsShuffle(true);
+      setRepeatMode('off');
+    }
+  };
   
   const toggleRepeat = () => {
-    const modes: ('off' | 'all' | 'one')[] = ['off', 'all', 'one'];
-    const nextIndex = (modes.indexOf(repeatMode) + 1) % modes.length;
-    setRepeatMode(modes[nextIndex]);
+    // Cycle: off -> all -> one -> off
+    let nextMode: 'off' | 'all' | 'one' = 'off';
+    
+    if (repeatMode === 'off') nextMode = 'all';
+    else if (repeatMode === 'all') nextMode = 'one';
+    else if (repeatMode === 'one') nextMode = 'off';
+
+    setRepeatMode(nextMode);
+
+    // If entering any repeat mode -> Force shuffle OFF (Mutually Exclusive)
+    if (nextMode !== 'off') {
+      setIsShuffle(false);
+    }
   };
 
   // Trending Section (Top 10)
