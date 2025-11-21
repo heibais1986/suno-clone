@@ -1,5 +1,6 @@
+
 import React, { useState, useEffect } from 'react';
-import { Music, Search, Menu, X, Globe } from 'lucide-react';
+import { Music, Search, Menu, X, Globe, RefreshCw, Loader2 } from 'lucide-react';
 import { Language } from '../types';
 import { TRANSLATIONS } from '../constants';
 
@@ -12,6 +13,7 @@ interface NavbarProps {
 const Navbar: React.FC<NavbarProps> = ({ language, setLanguage, onOpenAuth }) => {
   const [scrolled, setScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
   const t = TRANSLATIONS[language].navbar;
 
   useEffect(() => {
@@ -31,6 +33,26 @@ const Navbar: React.FC<NavbarProps> = ({ language, setLanguage, onOpenAuth }) =>
 
   const toggleLanguage = () => {
     setLanguage(language === 'en' ? 'zh' : 'en');
+  };
+
+  const handleSync = async () => {
+    if (isSyncing) return;
+    setIsSyncing(true);
+    try {
+      const res = await fetch('/api/sync', { method: 'POST' });
+      if (res.ok) {
+        const data = await res.json();
+        console.log("Sync result:", data);
+        // Reload the page to fetch the new songs list
+        window.location.reload();
+      } else {
+        console.error("Sync failed");
+        setIsSyncing(false);
+      }
+    } catch (error) {
+      console.error("Sync error:", error);
+      setIsSyncing(false);
+    }
   };
 
   return (
@@ -68,6 +90,15 @@ const Navbar: React.FC<NavbarProps> = ({ language, setLanguage, onOpenAuth }) =>
              />
           </div>
           
+          {/* Sync Button */}
+          <button 
+            onClick={handleSync}
+            className={`text-zinc-400 hover:text-white transition-colors p-2 rounded-full hover:bg-white/10 ${isSyncing ? 'animate-spin text-green-400' : ''}`}
+            title={language === 'en' ? "Sync R2 Songs" : "同步 R2 音乐"}
+          >
+            {isSyncing ? <Loader2 className="w-4 h-4" /> : <RefreshCw className="w-4 h-4" />}
+          </button>
+
           <button 
             onClick={toggleLanguage}
             className="flex items-center gap-1.5 text-zinc-400 hover:text-white transition-colors font-medium text-sm px-2"
@@ -86,6 +117,13 @@ const Navbar: React.FC<NavbarProps> = ({ language, setLanguage, onOpenAuth }) =>
 
         {/* Mobile Actions (Visible on mobile) - Fixed layout */}
         <div className="md:hidden flex items-center gap-2 z-50 shrink-0 ml-auto">
+          <button 
+            onClick={handleSync}
+            className={`text-zinc-400 p-2 ${isSyncing ? 'animate-spin text-green-400' : ''}`}
+          >
+             {isSyncing ? <Loader2 className="w-5 h-5" /> : <RefreshCw className="w-5 h-5" />}
+          </button>
+
           <button 
             onClick={onOpenAuth}
             className="font-semibold text-xs text-black bg-white active:bg-zinc-200 px-3 py-1.5 rounded-full transition-colors whitespace-nowrap"
