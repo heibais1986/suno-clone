@@ -1,6 +1,6 @@
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Play, Pause, SkipBack, SkipForward, Volume2, Repeat, Shuffle, Maximize2, VolumeX } from 'lucide-react';
+import { Play, Pause, SkipBack, SkipForward, Volume2, Repeat, Shuffle, Maximize2, VolumeX, Repeat1 } from 'lucide-react';
 import { Song, Language } from '../types';
 import { TRANSLATIONS } from '../constants';
 
@@ -9,13 +9,29 @@ interface PlayerProps {
   language: Language;
   onNext: () => void;
   onPrev: () => void;
+  isShuffle: boolean;
+  repeatMode: 'off' | 'all' | 'one';
+  onToggleShuffle: () => void;
+  onToggleRepeat: () => void;
 }
 
-const Player: React.FC<PlayerProps> = ({ currentSong, language, onNext, onPrev }) => {
+const Player: React.FC<PlayerProps> = ({ 
+  currentSong, 
+  language, 
+  onNext, 
+  onPrev,
+  isShuffle,
+  repeatMode,
+  onToggleShuffle,
+  onToggleRepeat
+}) => {
   const audioRef = useRef<HTMLAudioElement>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
+  
+  // Volume state
+  const [volume, setVolume] = useState(1);
   const [isMuted, setIsMuted] = useState(false);
   
   const t = TRANSLATIONS[language].player;
@@ -23,10 +39,17 @@ const Player: React.FC<PlayerProps> = ({ currentSong, language, onNext, onPrev }
   // Reset player state when song changes
   useEffect(() => {
     if (currentSong && audioRef.current) {
+       // Apply current volume settings
+       audioRef.current.volume = volume;
+       audioRef.current.muted = isMuted;
+
        // Auto play when song changes
-       audioRef.current.play().then(() => {
-         setIsPlaying(true);
-       }).catch(err => console.log("Auto-play prevented:", err));
+       const playPromise = audioRef.current.play();
+       if (playPromise !== undefined) {
+         playPromise
+           .then(() => setIsPlaying(true))
+           .catch(err => console.log("Auto-play prevented:", err));
+       }
     }
   }, [currentSong]);
 
@@ -63,10 +86,26 @@ const Player: React.FC<PlayerProps> = ({ currentSong, language, onNext, onPrev }
     }
   };
 
+  const handleVolumeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newVolume = parseFloat(e.target.value);
+    setVolume(newVolume);
+    
+    if (audioRef.current) {
+      audioRef.current.volume = newVolume;
+      
+      // If user drags slider up while muted, unmute
+      if (isMuted && newVolume > 0) {
+        setIsMuted(false);
+        audioRef.current.muted = false;
+      }
+    }
+  };
+
   const toggleMute = () => {
     if (audioRef.current) {
-      audioRef.current.muted = !isMuted;
-      setIsMuted(!isMuted);
+      const newMuted = !isMuted;
+      audioRef.current.muted = newMuted;
+      setIsMuted(newMuted);
     }
   };
 
@@ -88,9 +127,13 @@ const Player: React.FC<PlayerProps> = ({ currentSong, language, onNext, onPrev }
         src={currentSong.audioUrl}
         onTimeUpdate={handleTimeUpdate}
         onLoadedMetadata={handleLoadedMetadata}
+        // If repeatMode is 'one', loop natively. Otherwise handle end manually.
+        loop={repeatMode === 'one'}
         onEnded={() => {
-           // Song finished, play next
-           onNext();
+           if (repeatMode !== 'one') {
+               onNext();
+           }
+           // If loop is true, onEnded doesn't trigger, it just loops.
         }}
       />
 
@@ -108,7 +151,13 @@ const Player: React.FC<PlayerProps> = ({ currentSong, language, onNext, onPrev }
       {/* Controls */}
       <div className="flex flex-col items-center gap-2 w-1/3">
         <div className="flex items-center gap-6">
-          <button className="text-zinc-400 hover:text-white transition-colors hover:scale-110"><Shuffle className="w-4 h-4" /></button>
+          <button 
+            onClick={onToggleShuffle}
+            className={`transition-colors hover:scale-110 ${isShuffle ? 'text-green-500' : 'text-zinc-400 hover:text-white'}`}
+            title="Shuffle"
+          >
+            <Shuffle className="w-4 h-4" />
+          </button>
           
           <button 
             onClick={onPrev}
@@ -137,7 +186,14 @@ const Player: React.FC<PlayerProps> = ({ currentSong, language, onNext, onPrev }
             <SkipForward className="w-5 h-5 fill-current" />
           </button>
 
-          <button className="text-zinc-400 hover:text-white transition-colors hover:scale-110"><Repeat className="w-4 h-4" /></button>
+          <button 
+            onClick={onToggleRepeat}
+            className={`transition-colors hover:scale-110 relative ${repeatMode !== 'off' ? 'text-green-500' : 'text-zinc-400 hover:text-white'}`}
+            title="Repeat"
+          >
+            {repeatMode === 'one' ? <Repeat1 className="w-4 h-4" /> : <Repeat className="w-4 h-4" />}
+            {repeatMode === 'one' && <span className="absolute -top-1 -right-1 w-1 h-1 bg-green-500 rounded-full"></span>}
+          </button>
         </div>
 
         {/* Progress Bar */}
@@ -158,7 +214,7 @@ const Player: React.FC<PlayerProps> = ({ currentSong, language, onNext, onPrev }
                 max={duration || 100} 
                 value={currentTime} 
                 onChange={handleSeek}
-                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                className="absolute -top-2 bottom-0 w-full h-5 opacity-0 cursor-pointer z-10"
               />
            </div>
            <span className="w-8">{formatTime(duration)}</span>
@@ -172,14 +228,37 @@ const Player: React.FC<PlayerProps> = ({ currentSong, language, onNext, onPrev }
              {t.lyrics}
            </div>
          )}
+         
          <div className="flex items-center gap-2 group">
-            <button onClick={toggleMute} className="text-zinc-400 hover:text-white">
-               {isMuted ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
+            <button onClick={toggleMute} className="text-zinc-400 hover:text-white shrink-0">
+               {isMuted || volume === 0 ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
             </button>
-            <div className="w-20 h-1 bg-zinc-800 rounded-full overflow-hidden relative">
-              <div className={`h-full bg-white group-hover:bg-green-500 ${isMuted ? 'w-0' : 'w-2/3'}`}></div>
+            
+            {/* Interactive Volume Slider with bigger hit area */}
+            <div className="w-24 h-6 relative flex items-center justify-center cursor-pointer group">
+               {/* Track Background */}
+               <div className="absolute left-0 right-0 h-1 bg-zinc-800 rounded-full overflow-hidden pointer-events-none">
+                  {/* Filled Level */}
+                  <div 
+                    className="h-full bg-white group-hover:bg-green-500 rounded-full transition-all duration-75"
+                    style={{ width: `${isMuted ? 0 : volume * 100}%` }}
+                  ></div>
+               </div>
+               
+               {/* Range Input - Fully covers container for better hit detection */}
+               <input 
+                 type="range" 
+                 min="0" 
+                 max="1" 
+                 step="0.01"
+                 value={isMuted ? 0 : volume}
+                 onChange={handleVolumeChange}
+                 className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                 aria-label="Volume Control"
+               />
             </div>
          </div>
+
          <button className="text-zinc-400 hover:text-white"><Maximize2 className="w-4 h-4" /></button>
       </div>
     </div>

@@ -22,6 +22,10 @@ const App: React.FC = () => {
   const [language, setLanguage] = useState<Language>('zh'); 
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
 
+  // Player State
+  const [isShuffle, setIsShuffle] = useState(false);
+  const [repeatMode, setRepeatMode] = useState<'off' | 'all' | 'one'>('off');
+
   const t = TRANSLATIONS[language].app;
 
   // Fetch real songs from backend on load
@@ -52,47 +56,73 @@ const App: React.FC = () => {
   const baseSongs = hasRealData ? dbSongs : sampleSongs;
 
   // Combine generated songs at the very top/front
-  // This represents our "Global Play Queue"
   const allDisplaySongs = [...generatedSongs, ...baseSongs];
 
   // Player Navigation Handlers
   const handleNext = () => {
     if (!currentSong || allDisplaySongs.length === 0) return;
-    const currentIndex = allDisplaySongs.findIndex(s => s.id === currentSong.id);
-    
-    if (currentIndex === -1) {
-        // Fallback if id not found
-        setCurrentSong(allDisplaySongs[0]);
-    } else if (currentIndex < allDisplaySongs.length - 1) {
-        // Play next
-        setCurrentSong(allDisplaySongs[currentIndex + 1]);
+
+    let nextSong: Song;
+
+    if (isShuffle) {
+        // Pick a random song different from current
+        const available = allDisplaySongs.filter(s => s.id !== currentSong.id);
+        // If only 1 song in list, play it again
+        if (available.length === 0) {
+            nextSong = currentSong;
+        } else {
+            const randomIndex = Math.floor(Math.random() * available.length);
+            nextSong = available[randomIndex];
+        }
     } else {
-        // Loop back to start
-        setCurrentSong(allDisplaySongs[0]);
+        // Sequential
+        const currentIndex = allDisplaySongs.findIndex(s => s.id === currentSong.id);
+        
+        // If current not found (e.g. list changed), start from 0
+        if (currentIndex === -1) {
+            nextSong = allDisplaySongs[0];
+        } else if (currentIndex < allDisplaySongs.length - 1) {
+            nextSong = allDisplaySongs[currentIndex + 1];
+        } else {
+            // End of list -> Loop back to start (Repeat All behavior is default for Next button)
+            nextSong = allDisplaySongs[0];
+        }
     }
+    
+    setCurrentSong(nextSong);
   };
 
   const handlePrev = () => {
     if (!currentSong || allDisplaySongs.length === 0) return;
+
+    // Previous always goes to previous in list for UX consistency, unless strict history is needed.
+    // Even in shuffle mode, users often expect 'Previous' to go to the previous track in the visual list
+    // OR the previously played track. For simplicity, we use list order.
+    
     const currentIndex = allDisplaySongs.findIndex(s => s.id === currentSong.id);
     
-    if (currentIndex === -1) {
-        setCurrentSong(allDisplaySongs[0]);
-    } else if (currentIndex > 0) {
-        // Play previous
-        setCurrentSong(allDisplaySongs[currentIndex - 1]);
+    let prevSong: Song;
+    if (currentIndex === -1 || currentIndex === 0) {
+        prevSong = allDisplaySongs[allDisplaySongs.length - 1];
     } else {
-        // Loop to end
-        setCurrentSong(allDisplaySongs[allDisplaySongs.length - 1]);
+        prevSong = allDisplaySongs[currentIndex - 1];
     }
+
+    setCurrentSong(prevSong);
+  };
+
+  const toggleShuffle = () => setIsShuffle(!isShuffle);
+  
+  const toggleRepeat = () => {
+    const modes: ('off' | 'all' | 'one')[] = ['off', 'all', 'one'];
+    const nextIndex = (modes.indexOf(repeatMode) + 1) % modes.length;
+    setRepeatMode(modes[nextIndex]);
   };
 
   // Trending Section (Top 10)
   const trendingSongs = allDisplaySongs.slice(0, 10);
   
-  // New Releases (Top 10, newest first)
-  // Note: /api/songs returns ORDER BY created_at DESC, so dbSongs are already "Newest".
-  // If using sample songs, we just reverse them to fake "newness".
+  // New Releases
   const newReleases = hasRealData 
     ? [...dbSongs].slice(0, 10) 
     : [...sampleSongs].reverse().slice(0, 10);
@@ -128,7 +158,7 @@ const App: React.FC = () => {
       if (!isDragging || !scrollRef.current) return;
       e.preventDefault();
       const x = e.pageX - scrollRef.current.offsetLeft;
-      const walk = (x - startX) * 1.5; // Scroll speed multiplier
+      const walk = (x - startX) * 1.5; 
       scrollRef.current.scrollLeft = scrollLeft - walk;
     };
 
@@ -161,15 +191,12 @@ const App: React.FC = () => {
         <div className="relative z-20">
            <CreateSection onSongGenerated={handleSongGenerated} language={language} />
            
-           {/* Marquee Section - Now passes dynamic songs */}
            <div className="mt-16 mb-8 border-y border-white/5 bg-black/20 backdrop-blur-sm py-2">
              <Marquee language={language} songs={baseSongs} />
            </div>
            
-           {/* Main Content */}
            <div className="max-w-[1600px] mx-auto px-4 md:px-6 space-y-12">
              
-             {/* Generated/Trending Section */}
              <section>
                <div className="flex items-center justify-between mb-6 px-2">
                  <div className="flex items-baseline gap-4">
@@ -181,7 +208,6 @@ const App: React.FC = () => {
                  </button>
                </div>
                
-               {/* Horizontal Scroll Container with Drag Support */}
                <div 
                  ref={trendingDrag.ref}
                  {...trendingDrag.events}
@@ -208,7 +234,6 @@ const App: React.FC = () => {
                </div>
              </section>
 
-             {/* New Releases Section */}
              <section>
                <div className="flex items-center justify-between mb-6 px-2">
                  <h2 className="text-2xl font-bold hover:text-white cursor-pointer transition-colors">{language === 'zh' ? '最新发布' : 'New Arrivals'}</h2>
@@ -235,11 +260,6 @@ const App: React.FC = () => {
                       </div>
                    </div>
                  ))}
-                 {newReleases.length === 0 && (
-                    <div className="text-zinc-500 text-sm py-8 w-full text-center border border-dashed border-zinc-800 rounded-lg">
-                        ...
-                    </div>
-                 )}
                </div>
              </section>
 
@@ -250,18 +270,20 @@ const App: React.FC = () => {
       <Player 
         currentSong={currentSong} 
         language={language} 
-        onNext={handleNext} 
+        onNext={() => handleNext()} 
         onPrev={handlePrev}
+        isShuffle={isShuffle}
+        repeatMode={repeatMode}
+        onToggleShuffle={toggleShuffle}
+        onToggleRepeat={toggleRepeat}
       />
 
-      {/* Auth Modal */}
       <AuthModal 
         isOpen={isAuthModalOpen} 
         onClose={() => setIsAuthModalOpen(false)} 
         language={language}
       />
 
-      {/* Generated Lyrics Modal Overlay */}
       {currentSong?.lyrics && (
         <div className="fixed bottom-24 right-6 w-80 bg-zinc-900/95 backdrop-blur-xl border border-white/10 rounded-2xl p-6 shadow-2xl z-40 animate-in slide-in-from-bottom-5 hidden md:block">
           <h3 className="text-xs font-bold text-zinc-500 uppercase mb-2 tracking-wider">{t.lyricsTitle}</h3>

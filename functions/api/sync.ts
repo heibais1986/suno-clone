@@ -88,7 +88,7 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
       publicDomain = publicDomain.slice(0, -1);
     }
     
-    // Force HTTPS if missing (unless it's localhost, but R2 usually needs https)
+    // Force HTTPS if missing
     if (!publicDomain.startsWith('http')) {
       publicDomain = `https://${publicDomain}`;
     }
@@ -99,14 +99,12 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
       obj.key.endsWith('.mp3') || obj.key.endsWith('.wav') || obj.key.endsWith('.m4a') || obj.key.endsWith('.ogg')
     );
 
-    // 4. Wipe Existing Data (Full Sync Strategy)
+    // 4. Wipe Existing Data (Full Sync Strategy) - As requested
+    // This ensures the DB exactly matches the R2 bucket state.
     try {
         await env.DB.prepare("DELETE FROM songs").run();
-        // Optional: Reset ID counter if using AUTOINCREMENT, but UUID/String IDs don't need it.
-        // await env.DB.prepare("DELETE FROM sqlite_sequence WHERE name='songs'").run(); 
     } catch (e) {
-        // If table doesn't exist, ignore error (or return error if strict)
-        return new Response(JSON.stringify({ error: "Table 'songs' likely missing. Run schema migration." }), { status: 500 });
+        return new Response(JSON.stringify({ error: "Failed to clear songs table. Ensure DB migration is applied." }), { status: 500 });
     }
 
     if (audioFiles.length === 0) {
@@ -115,10 +113,6 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
 
     // 5. Insert All Files
     let addedCount = 0;
-    
-    // Using batch insert for performance could be better, but loop is safer for now 
-    // to handle individual errors without failing the whole batch in this simple setup.
-    // We will construct the logic to be robust.
     
     for (const file of audioFiles) {
       // Encode key components to handle spaces/special chars safely in URL
@@ -130,12 +124,10 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
       const title = fileName.replace(/\.(mp3|wav|m4a|ogg)$/i, '').replace(/_/g, ' ');
       
       // Generate metadata
-      // Use filename as seed for consistent images between syncs
       const imageUrl = `https://picsum.photos/seed/${encodeURIComponent(fileName)}/400/400`;
       const artist = "R2 Upload";
       const style = "Imported Track";
       
-      // Use the file's upload date or current time
       const createdAt = file.uploaded ? new Date(file.uploaded).toISOString() : new Date().toISOString();
 
       try {
@@ -145,15 +137,7 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
         
         addedCount++;
       } catch (err) {
-        // Fallback for older schemas without created_at
-         try {
-            await env.DB.prepare(
-                "INSERT INTO songs (title, artist, style, duration, audio_url, image_url) VALUES (?, ?, ?, ?, ?, ?)"
-            ).bind(title, artist, style, "Unknown", fileUrl, imageUrl).run();
-            addedCount++;
-         } catch (innerErr) {
-             console.error(`Failed to insert ${fileName}`, innerErr);
-         }
+         console.error(`Failed to insert ${fileName}`, err);
       }
     }
 
