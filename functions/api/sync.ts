@@ -56,7 +56,7 @@ type PagesFunction<Env = unknown, Params extends string = any, Data extends Reco
 
 interface Env {
   DB: D1Database;
-  R2_BUCKET: R2Bucket;
+  MUSIC_BUCKET: R2Bucket;
   R2_PUBLIC_DOMAIN: string; // e.g., "https://pub-xxx.r2.dev"
   [key: string]: any; // Allow indexing for debug logging
 }

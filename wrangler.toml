@@ -6,7 +6,7 @@ d1_databases = [
 ]
 
 [[r2_buckets]]
-binding = "MUSIC_BUCKET"  
+binding = "R2_BUCKET"  
 bucket_name = "creative-studio-music"       
 
 [observability]
