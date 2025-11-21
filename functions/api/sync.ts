@@ -74,9 +74,9 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
       return new Response(JSON.stringify({ error: errorMsg }), { status: 500 });
     }
 
-    if (!env.R2_BUCKET) {
+    if (!env.MUSIC_BUCKET) {
        const availableBindings = Object.keys(env).filter(k => typeof env[k] !== 'string' && typeof env[k] !== 'number').join(', ');
-       return new Response(JSON.stringify({ error: `R2 Bucket (R2_BUCKET) not bound. Found: [${availableBindings}]. Ensure Variable Name is 'R2_BUCKET'.` }), { status: 500 });
+       return new Response(JSON.stringify({ error: `R2 Bucket (MUSIC_BUCKET) not bound. Found: [${availableBindings}]. Ensure Variable Name is 'MUSIC_BUCKET'.` }), { status: 500 });
     }
 
     // Default public domain if not set (fallback, usually should be set in env vars)
@@ -89,7 +89,7 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
     // 2. List all files in the R2 bucket
     // Note: For production with 1000+ files, you'd need pagination (cursor). 
     // For now, we list the first 1000.
-    const listing = await env.R2_BUCKET.list();
+    const listing = await env.MUSIC_BUCKET.list();
     const audioFiles = listing.objects.filter(obj => 
       obj.key.endsWith('.mp3') || obj.key.endsWith('.wav') || obj.key.endsWith('.m4a') || obj.key.endsWith('.ogg')
     );
