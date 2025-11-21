@@ -8,9 +8,17 @@ interface NavbarProps {
   language: Language;
   setLanguage: (lang: Language) => void;
   onOpenAuth: () => void;
+  searchQuery: string;
+  setSearchQuery: (query: string) => void;
 }
 
-const Navbar: React.FC<NavbarProps> = ({ language, setLanguage, onOpenAuth }) => {
+const Navbar: React.FC<NavbarProps> = ({ 
+  language, 
+  setLanguage, 
+  onOpenAuth,
+  searchQuery,
+  setSearchQuery
+}) => {
   const [scrolled, setScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
@@ -85,6 +93,8 @@ const Navbar: React.FC<NavbarProps> = ({ language, setLanguage, onOpenAuth }) =>
              <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500" />
              <input 
                type="text" 
+               value={searchQuery}
+               onChange={(e) => setSearchQuery(e.target.value)}
                placeholder={t.searchPlaceholder} 
                className="bg-zinc-900 border border-white/10 rounded-full py-2 pl-9 pr-4 text-sm focus:outline-none focus:border-white/30 w-48 transition-all focus:w-64"
              />
@@ -142,6 +152,18 @@ const Navbar: React.FC<NavbarProps> = ({ language, setLanguage, onOpenAuth }) =>
       {/* Mobile Menu Overlay */}
       <div className={`fixed inset-0 bg-zinc-950 pt-24 px-6 transition-transform duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] md:hidden z-40 flex flex-col gap-6 h-screen overflow-y-auto ${mobileMenuOpen ? 'translate-x-0' : 'translate-x-full'}`}>
         <div className="flex flex-col gap-6">
+          {/* Mobile Search Input */}
+          <div className="relative">
+             <Search className="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500" />
+             <input 
+               type="text" 
+               value={searchQuery}
+               onChange={(e) => setSearchQuery(e.target.value)}
+               placeholder={t.searchPlaceholder} 
+               className="w-full bg-zinc-900 border border-white/10 rounded-xl py-3 pl-10 pr-4 text-base focus:outline-none focus:border-white/30"
+             />
+          </div>
+
           <a href="#" className="text-3xl font-bold hover:text-zinc-300 border-b border-white/5 pb-4">{t.showcase}</a>
           <a href="#" className="text-3xl font-bold hover:text-zinc-300 border-b border-white/5 pb-4">{t.create}</a>
           <a href="#" className="text-3xl font-bold hover:text-zinc-300 border-b border-white/5 pb-4">{t.library}</a>
