@@ -2,7 +2,7 @@ name = "creative-studio"
 compatibility_date = "2025-11-20"
 
 d1_databases = [
-  { binding = "DB", database_name = "suno-db", database_id = "94b69358-2fa3-4c54-87c0-5e716ea08444" }
+  { binding = "DB", database_name = "suno-db", database_id = "61098853-a4b4-4cde-9c04-4cf4d0984ae7" }
 ]
 
 [[r2_buckets]]
