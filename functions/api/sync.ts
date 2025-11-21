@@ -58,19 +58,27 @@ interface Env {
   DB: D1Database;
   R2_BUCKET: R2Bucket;
   R2_PUBLIC_DOMAIN: string; // e.g., "https://pub-xxx.r2.dev"
+  [key: string]: any; // Allow indexing for debug logging
 }
 
 export const onRequestPost: PagesFunction<Env> = async (context) => {
   try {
     const { env } = context;
 
-    // 1. Check checks
+    // 1. Diagnostic Check
+    // If DB is missing, print out what IS available to help the user fix the binding name.
     if (!env.DB) {
-      return new Response(JSON.stringify({ error: "Database (DB) not bound" }), { status: 500 });
+      const availableBindings = Object.keys(env).filter(k => typeof env[k] !== 'string' && typeof env[k] !== 'number').join(', ');
+      const errorMsg = `Database (DB) not bound. Found these bindings: [${availableBindings || 'NONE'}]. Please ensure your D1 binding Variable Name is exactly 'DB' in Cloudflare Dashboard or wrangler.toml.`;
+      console.error(errorMsg);
+      return new Response(JSON.stringify({ error: errorMsg }), { status: 500 });
     }
+
     if (!env.R2_BUCKET) {
-      return new Response(JSON.stringify({ error: "R2 Bucket (R2_BUCKET) not bound" }), { status: 500 });
+       const availableBindings = Object.keys(env).filter(k => typeof env[k] !== 'string' && typeof env[k] !== 'number').join(', ');
+       return new Response(JSON.stringify({ error: `R2 Bucket (R2_BUCKET) not bound. Found: [${availableBindings}]. Ensure Variable Name is 'R2_BUCKET'.` }), { status: 500 });
     }
+
     // Default public domain if not set (fallback, usually should be set in env vars)
     const publicDomain = env.R2_PUBLIC_DOMAIN || "";
 
@@ -94,6 +102,13 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
 
     // 3. Check DB for existing songs to avoid duplicates
     // Get all audio_urls currently in DB
+    // Ensure the table exists first (basic error handling)
+    try {
+        await env.DB.prepare("SELECT 1 FROM songs LIMIT 1").first();
+    } catch (e) {
+        return new Response(JSON.stringify({ error: "Table 'songs' does not exist. Please run the SQL initialization command." }), { status: 500 });
+    }
+
     const existingResult = await env.DB.prepare("SELECT audio_url FROM songs").all<{ audio_url: string }>();
     const existingUrls = new Set(existingResult.results.map(r => r.audio_url));
 
