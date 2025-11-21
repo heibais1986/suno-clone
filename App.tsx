@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import Navbar from './components/Navbar';
 import Hero from './components/Hero';
 import CreateSection from './components/CreateSection';
@@ -13,6 +13,9 @@ import { ChevronRight } from 'lucide-react';
 const App: React.FC = () => {
   // Separate generated songs so they persist across language changes
   const [generatedSongs, setGeneratedSongs] = useState<Song[]>([]);
+  // Songs fetched from the D1 database (Real R2 uploads)
+  const [dbSongs, setDbSongs] = useState<Song[]>([]);
+  
   const [currentSong, setCurrentSong] = useState<Song | null>(null);
   // Default language set to Chinese
   const [language, setLanguage] = useState<Language>('zh'); 
@@ -20,12 +23,35 @@ const App: React.FC = () => {
 
   const t = TRANSLATIONS[language].app;
 
-  // Merge generated songs with localized sample songs
+  // Fetch real songs from backend on load
+  useEffect(() => {
+    const fetchSongs = async () => {
+      try {
+        const res = await fetch('/api/songs');
+        if (res.ok) {
+          const data = await res.json();
+          if (Array.isArray(data)) {
+            setDbSongs(data);
+          }
+        }
+      } catch (error) {
+        console.error("Failed to fetch songs from DB:", error);
+        // Fail silently, showing only sample songs
+      }
+    };
+    fetchSongs();
+  }, []);
+
+  // Merge: Generated (Top priority) -> DB Songs (R2 uploads) -> Sample Songs (Fallback)
   const sampleSongs = getSampleSongs(language);
   
+  // Combine all sources
+  const allSongs = [...generatedSongs, ...dbSongs, ...sampleSongs];
+
   // Group songs for different sections to mimic a rich dashboard
-  const trendingSongs = [...generatedSongs, ...sampleSongs].slice(0, 6);
-  const newReleases = [...sampleSongs].reverse().slice(0, 6);
+  const trendingSongs = allSongs.slice(0, 10); // Show top 10 mixed
+  // For new releases, show DB songs first, then samples
+  const newReleases = [...dbSongs, ...sampleSongs].reverse().slice(0, 10);
 
   const handleSongGenerated = (newSong: Song) => {
     setGeneratedSongs(prev => [newSong, ...prev]);
@@ -119,14 +145,10 @@ const App: React.FC = () => {
                >
                  {trendingSongs.map((song) => (
                    <div key={song.id} className="min-w-[220px] md:min-w-[240px] shrink-0 pointer-events-none md:pointer-events-auto">
-                     {/* Wrap in div to re-enable pointer events for children if needed, 
-                         but for pure drag containers, usually the card click is handled on MouseUp if not dragged. 
-                         Here we keep it simple. */}
                      <div className="pointer-events-auto">
                         <SongCard 
                             song={song} 
                             onClick={(s) => {
-                                // Prevent click if we were dragging
                                 if (!trendingDrag.isDragging) setCurrentSong(s);
                             }}
                             language={language}
