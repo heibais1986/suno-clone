@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import Navbar from './components/Navbar';
 import Hero from './components/Hero';
@@ -36,22 +37,32 @@ const App: React.FC = () => {
         }
       } catch (error) {
         console.error("Failed to fetch songs from DB:", error);
-        // Fail silently, showing only sample songs
+        // Fail silently
       }
     };
     fetchSongs();
   }, []);
 
-  // Merge: Generated (Top priority) -> DB Songs (R2 uploads) -> Sample Songs (Fallback)
+  // --- Logic to Prioritize R2 Data ---
+  const hasRealData = dbSongs.length > 0;
   const sampleSongs = getSampleSongs(language);
-  
-  // Combine all sources
-  const allSongs = [...generatedSongs, ...dbSongs, ...sampleSongs];
 
-  // Group songs for different sections to mimic a rich dashboard
-  const trendingSongs = allSongs.slice(0, 10); // Show top 10 mixed
-  // For new releases, show DB songs first, then samples
-  const newReleases = [...dbSongs, ...sampleSongs].reverse().slice(0, 10);
+  // If we have real songs, use ONLY real songs + generated ones.
+  // If no real songs, fallback to samples.
+  const baseSongs = hasRealData ? dbSongs : sampleSongs;
+
+  // Combine generated songs at the very top/front
+  const allDisplaySongs = [...generatedSongs, ...baseSongs];
+
+  // Trending Section (Top 10)
+  const trendingSongs = allDisplaySongs.slice(0, 10);
+  
+  // New Releases (Top 10, newest first)
+  // Note: /api/songs returns ORDER BY created_at DESC, so dbSongs are already "Newest".
+  // If using sample songs, we just reverse them to fake "newness".
+  const newReleases = hasRealData 
+    ? [...dbSongs].slice(0, 10) 
+    : [...sampleSongs].reverse().slice(0, 10);
 
   const handleSongGenerated = (newSong: Song) => {
     setGeneratedSongs(prev => [newSong, ...prev]);
@@ -117,12 +128,12 @@ const App: React.FC = () => {
         <div className="relative z-20">
            <CreateSection onSongGenerated={handleSongGenerated} language={language} />
            
-           {/* Marquee Section - Ambient Background */}
+           {/* Marquee Section - Now passes dynamic songs */}
            <div className="mt-16 mb-8 border-y border-white/5 bg-black/20 backdrop-blur-sm py-2">
-             <Marquee language={language} />
+             <Marquee language={language} songs={baseSongs} />
            </div>
            
-           {/* Main Content - Horizontal Scrolling Sections (Suno Style) */}
+           {/* Main Content */}
            <div className="max-w-[1600px] mx-auto px-4 md:px-6 space-y-12">
              
              {/* Generated/Trending Section */}
@@ -156,6 +167,11 @@ const App: React.FC = () => {
                      </div>
                    </div>
                  ))}
+                 {trendingSongs.length === 0 && (
+                    <div className="text-zinc-500 text-sm py-8 w-full text-center border border-dashed border-zinc-800 rounded-lg">
+                        {language === 'zh' ? '暂无音乐，点击上方同步按钮' : 'No songs found. Click sync to load from R2.'}
+                    </div>
+                 )}
                </div>
              </section>
 
@@ -186,6 +202,11 @@ const App: React.FC = () => {
                       </div>
                    </div>
                  ))}
+                 {newReleases.length === 0 && (
+                    <div className="text-zinc-500 text-sm py-8 w-full text-center border border-dashed border-zinc-800 rounded-lg">
+                        ...
+                    </div>
+                 )}
                </div>
              </section>
 

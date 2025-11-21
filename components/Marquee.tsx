@@ -1,9 +1,11 @@
+
 import React from 'react';
 import { getSampleSongs } from '../constants';
 import { Language, Song } from '../types';
 
 interface MarqueeProps {
   language: Language;
+  songs?: Song[];
 }
 
 const SongItem: React.FC<{ song: Song }> = ({ song }) => (
@@ -21,14 +23,17 @@ const SongItem: React.FC<{ song: Song }> = ({ song }) => (
   </div>
 );
 
-const Marquee: React.FC<MarqueeProps> = ({ language }) => {
+const Marquee: React.FC<MarqueeProps> = ({ language, songs = [] }) => {
+  // Use passed songs first, fallback to samples only if empty
   const sampleSongs = getSampleSongs(language);
-  // We use 2 sets of songs. The animation in CSS moves -50%.
-  // Start: [Set1][Set2] visible at 0%
-  // End:   Moves left by length of [Set1]. [Set2] is now where [Set1] was.
-  // Since Set1 == Set2, this is a seamless loop.
-  // 10 songs * approx 300px = 3000px per set. Enough for most screens (6000px total).
-  const items = [...sampleSongs, ...sampleSongs];
+  const displaySongs = songs.length > 0 ? songs : sampleSongs;
+
+  // We need enough items to scroll smoothly. 
+  // If we have few songs, duplicate them more times.
+  let items = [...displaySongs, ...displaySongs];
+  if (items.length < 10) {
+      items = [...items, ...items, ...items]; // Triple it if list is short
+  }
 
   return (
     <div className="w-full overflow-hidden bg-zinc-950 py-12 flex flex-col gap-6 mask-linear-gradient relative z-0">
@@ -36,14 +41,14 @@ const Marquee: React.FC<MarqueeProps> = ({ language }) => {
       {/* Row 1: Moving Left */}
       <div className="flex gap-6 w-max animate-marquee hover:[animation-play-state:paused]">
         {items.map((song, index) => (
-          <SongItem key={`r1-${index}`} song={song} />
+          <SongItem key={`r1-${index}-${song.id}`} song={song} />
         ))}
       </div>
 
       {/* Row 2: Moving Right (Reverse) */}
       <div className="flex gap-6 w-max animate-marquee-reverse hover:[animation-play-state:paused]">
         {items.slice().reverse().map((song, index) => (
-          <SongItem key={`r2-${index}`} song={song} />
+          <SongItem key={`r2-${index}-${song.id}`} song={song} />
         ))}
       </div>
       

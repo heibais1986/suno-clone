@@ -58,37 +58,29 @@ interface Env {
   DB: D1Database;
   MUSIC_BUCKET: R2Bucket;
   R2_PUBLIC_DOMAIN: string; // e.g., "https://pub-xxx.r2.dev"
-  [key: string]: any; // Allow indexing for debug logging
+  [key: string]: any;
 }
 
 export const onRequestPost: PagesFunction<Env> = async (context) => {
   try {
     const { env } = context;
 
-    // 1. Diagnostic Check
-    // If DB is missing, print out what IS available to help the user fix the binding name.
     if (!env.DB) {
       const availableBindings = Object.keys(env).filter(k => typeof env[k] !== 'string' && typeof env[k] !== 'number').join(', ');
-      const errorMsg = `Database (DB) not bound. Found these bindings: [${availableBindings || 'NONE'}]. Please ensure your D1 binding Variable Name is exactly 'DB' in Cloudflare Dashboard or wrangler.toml.`;
+      const errorMsg = `Database (DB) not bound. Found: [${availableBindings || 'NONE'}]. Check wrangler.toml or Cloudflare Dashboard.`;
       console.error(errorMsg);
       return new Response(JSON.stringify({ error: errorMsg }), { status: 500 });
     }
 
     if (!env.MUSIC_BUCKET) {
-       const availableBindings = Object.keys(env).filter(k => typeof env[k] !== 'string' && typeof env[k] !== 'number').join(', ');
-       return new Response(JSON.stringify({ error: `R2 Bucket (MUSIC_BUCKET) not bound. Found: [${availableBindings}]. Ensure Variable Name is 'MUSIC_BUCKET'.` }), { status: 500 });
+       return new Response(JSON.stringify({ error: "R2 Bucket (MUSIC_BUCKET) not bound." }), { status: 500 });
     }
 
-    // Default public domain if not set (fallback, usually should be set in env vars)
     const publicDomain = env.R2_PUBLIC_DOMAIN || "";
-
     if (!publicDomain) {
         return new Response(JSON.stringify({ error: "R2_PUBLIC_DOMAIN environment variable is missing" }), { status: 500 });
     }
 
-    // 2. List all files in the R2 bucket
-    // Note: For production with 1000+ files, you'd need pagination (cursor). 
-    // For now, we list the first 1000.
     const listing = await env.MUSIC_BUCKET.list();
     const audioFiles = listing.objects.filter(obj => 
       obj.key.endsWith('.mp3') || obj.key.endsWith('.wav') || obj.key.endsWith('.m4a') || obj.key.endsWith('.ogg')
@@ -100,39 +92,44 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
 
     let addedCount = 0;
 
-    // 3. Check DB for existing songs to avoid duplicates
-    // Get all audio_urls currently in DB
-    // Ensure the table exists first (basic error handling)
+    // Check DB for existing songs
     try {
         await env.DB.prepare("SELECT 1 FROM songs LIMIT 1").first();
     } catch (e) {
-        return new Response(JSON.stringify({ error: "Table 'songs' does not exist. Please run the SQL initialization command." }), { status: 500 });
+        return new Response(JSON.stringify({ error: "Table 'songs' does not exist in D1." }), { status: 500 });
     }
 
     const existingResult = await env.DB.prepare("SELECT audio_url FROM songs").all<{ audio_url: string }>();
     const existingUrls = new Set(existingResult.results.map(r => r.audio_url));
 
-    // 4. Process files
     for (const file of audioFiles) {
-      const fileUrl = `${publicDomain}/${file.key}`;
+      // FIX: Encode the file key to handle spaces and special characters
+      const encodedKey = file.key.split('/').map(encodeURIComponent).join('/');
+      const fileUrl = `${publicDomain}/${encodedKey}`;
 
       if (!existingUrls.has(fileUrl)) {
-        // Parse title from filename (e.g., "My Song.mp3" -> "My Song")
         const fileName = file.key.split('/').pop() || file.key;
         const title = fileName.replace(/\.(mp3|wav|m4a|ogg)$/i, '').replace(/_/g, ' ');
         
-        // Generate a random placeholder image
         const randomId = Math.floor(Math.random() * 1000);
         const imageUrl = `https://picsum.photos/seed/${encodeURIComponent(title)}/400/400`;
-        
-        // Random genre/artist for demo purposes (since R2 metadata is limited)
         const artist = "R2 Upload";
         const style = "Imported Track";
+        // FIX: Add created_at for proper sorting
+        const createdAt = new Date().toISOString();
 
-        // Insert into DB
-        await env.DB.prepare(
-          "INSERT INTO songs (title, artist, style, duration, audio_url, image_url) VALUES (?, ?, ?, ?, ?, ?)"
-        ).bind(title, artist, style, "Unknown", fileUrl, imageUrl).run();
+        // Try to insert with created_at first, if it fails (schema mismatch), fallback to without it? 
+        // Assuming schema corresponds to `functions/api/songs/index.ts` which uses created_at.
+        try {
+          await env.DB.prepare(
+            "INSERT INTO songs (title, artist, style, duration, audio_url, image_url, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)"
+          ).bind(title, artist, style, "Unknown", fileUrl, imageUrl, createdAt).run();
+        } catch (err) {
+          // Fallback for older schemas without created_at column
+           await env.DB.prepare(
+            "INSERT INTO songs (title, artist, style, duration, audio_url, image_url) VALUES (?, ?, ?, ?, ?, ?)"
+          ).bind(title, artist, style, "Unknown", fileUrl, imageUrl).run();
+        }
 
         addedCount++;
       }
