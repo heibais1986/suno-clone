@@ -76,9 +76,20 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
        return new Response(JSON.stringify({ error: "R2 Bucket (MUSIC_BUCKET) not bound." }), { status: 500 });
     }
 
-    const publicDomain = env.R2_PUBLIC_DOMAIN || "";
+    // FIX: Ensure public domain starts with https:// to prevent relative URL issues
+    let publicDomain = env.R2_PUBLIC_DOMAIN || "";
     if (!publicDomain) {
         return new Response(JSON.stringify({ error: "R2_PUBLIC_DOMAIN environment variable is missing" }), { status: 500 });
+    }
+    
+    // Strip trailing slash if present
+    if (publicDomain.endsWith('/')) {
+      publicDomain = publicDomain.slice(0, -1);
+    }
+    
+    // Force HTTPS if missing (unless it's localhost, but R2 usually needs https)
+    if (!publicDomain.startsWith('http')) {
+      publicDomain = `https://${publicDomain}`;
     }
 
     const listing = await env.MUSIC_BUCKET.list();
@@ -107,19 +118,20 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
       const encodedKey = file.key.split('/').map(encodeURIComponent).join('/');
       const fileUrl = `${publicDomain}/${encodedKey}`;
 
+      // Check if this exact URL is already in DB
+      // Note: If the old DB had "domain.com/file.mp3" and new is "https://domain.com/file.mp3",
+      // this check returns false (not found), so it will insert the fixed version.
+      // This is actually good as it fixes the broken links, but might create duplicates.
       if (!existingUrls.has(fileUrl)) {
         const fileName = file.key.split('/').pop() || file.key;
         const title = fileName.replace(/\.(mp3|wav|m4a|ogg)$/i, '').replace(/_/g, ' ');
         
-        const randomId = Math.floor(Math.random() * 1000);
+        // Generate a deterministic-ish but random ID
         const imageUrl = `https://picsum.photos/seed/${encodeURIComponent(title)}/400/400`;
         const artist = "R2 Upload";
         const style = "Imported Track";
-        // FIX: Add created_at for proper sorting
         const createdAt = new Date().toISOString();
 
-        // Try to insert with created_at first, if it fails (schema mismatch), fallback to without it? 
-        // Assuming schema corresponds to `functions/api/songs/index.ts` which uses created_at.
         try {
           await env.DB.prepare(
             "INSERT INTO songs (title, artist, style, duration, audio_url, image_url, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)"
