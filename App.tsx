@@ -52,7 +52,40 @@ const App: React.FC = () => {
   const baseSongs = hasRealData ? dbSongs : sampleSongs;
 
   // Combine generated songs at the very top/front
+  // This represents our "Global Play Queue"
   const allDisplaySongs = [...generatedSongs, ...baseSongs];
+
+  // Player Navigation Handlers
+  const handleNext = () => {
+    if (!currentSong || allDisplaySongs.length === 0) return;
+    const currentIndex = allDisplaySongs.findIndex(s => s.id === currentSong.id);
+    
+    if (currentIndex === -1) {
+        // Fallback if id not found
+        setCurrentSong(allDisplaySongs[0]);
+    } else if (currentIndex < allDisplaySongs.length - 1) {
+        // Play next
+        setCurrentSong(allDisplaySongs[currentIndex + 1]);
+    } else {
+        // Loop back to start
+        setCurrentSong(allDisplaySongs[0]);
+    }
+  };
+
+  const handlePrev = () => {
+    if (!currentSong || allDisplaySongs.length === 0) return;
+    const currentIndex = allDisplaySongs.findIndex(s => s.id === currentSong.id);
+    
+    if (currentIndex === -1) {
+        setCurrentSong(allDisplaySongs[0]);
+    } else if (currentIndex > 0) {
+        // Play previous
+        setCurrentSong(allDisplaySongs[currentIndex - 1]);
+    } else {
+        // Loop to end
+        setCurrentSong(allDisplaySongs[allDisplaySongs.length - 1]);
+    }
+  };
 
   // Trending Section (Top 10)
   const trendingSongs = allDisplaySongs.slice(0, 10);
@@ -214,7 +247,12 @@ const App: React.FC = () => {
         </div>
       </main>
 
-      <Player currentSong={currentSong} language={language} />
+      <Player 
+        currentSong={currentSong} 
+        language={language} 
+        onNext={handleNext} 
+        onPrev={handlePrev}
+      />
 
       {/* Auth Modal */}
       <AuthModal 

@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import { Play, Pause, SkipBack, SkipForward, Volume2, Repeat, Shuffle, Maximize2, VolumeX } from 'lucide-react';
 import { Song, Language } from '../types';
@@ -6,9 +7,11 @@ import { TRANSLATIONS } from '../constants';
 interface PlayerProps {
   currentSong: Song | null;
   language: Language;
+  onNext: () => void;
+  onPrev: () => void;
 }
 
-const Player: React.FC<PlayerProps> = ({ currentSong, language }) => {
+const Player: React.FC<PlayerProps> = ({ currentSong, language, onNext, onPrev }) => {
   const audioRef = useRef<HTMLAudioElement>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
@@ -85,7 +88,10 @@ const Player: React.FC<PlayerProps> = ({ currentSong, language }) => {
         src={currentSong.audioUrl}
         onTimeUpdate={handleTimeUpdate}
         onLoadedMetadata={handleLoadedMetadata}
-        onEnded={() => setIsPlaying(false)}
+        onEnded={() => {
+           // Song finished, play next
+           onNext();
+        }}
       />
 
       {/* Song Info */}
@@ -103,7 +109,14 @@ const Player: React.FC<PlayerProps> = ({ currentSong, language }) => {
       <div className="flex flex-col items-center gap-2 w-1/3">
         <div className="flex items-center gap-6">
           <button className="text-zinc-400 hover:text-white transition-colors hover:scale-110"><Shuffle className="w-4 h-4" /></button>
-          <button className="text-zinc-200 hover:text-white transition-colors hover:scale-110"><SkipBack className="w-5 h-5 fill-current" /></button>
+          
+          <button 
+            onClick={onPrev}
+            className="text-zinc-200 hover:text-white transition-colors hover:scale-110"
+            title="Previous"
+          >
+            <SkipBack className="w-5 h-5 fill-current" />
+          </button>
           
           <button 
             onClick={togglePlay}
@@ -116,7 +129,14 @@ const Player: React.FC<PlayerProps> = ({ currentSong, language }) => {
             )}
           </button>
           
-          <button className="text-zinc-200 hover:text-white transition-colors hover:scale-110"><SkipForward className="w-5 h-5 fill-current" /></button>
+          <button 
+            onClick={onNext}
+            className="text-zinc-200 hover:text-white transition-colors hover:scale-110"
+            title="Next"
+          >
+            <SkipForward className="w-5 h-5 fill-current" />
+          </button>
+
           <button className="text-zinc-400 hover:text-white transition-colors hover:scale-110"><Repeat className="w-4 h-4" /></button>
         </div>
 
