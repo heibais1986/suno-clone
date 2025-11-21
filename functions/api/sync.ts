@@ -65,6 +65,7 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
   try {
     const { env } = context;
 
+    // 1. Check Environment Bindings
     if (!env.DB) {
       const availableBindings = Object.keys(env).filter(k => typeof env[k] !== 'string' && typeof env[k] !== 'number').join(', ');
       const errorMsg = `Database (DB) not bound. Found: [${availableBindings || 'NONE'}]. Check wrangler.toml or Cloudflare Dashboard.`;
@@ -76,7 +77,7 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
        return new Response(JSON.stringify({ error: "R2 Bucket (MUSIC_BUCKET) not bound." }), { status: 500 });
     }
 
-    // FIX: Ensure public domain starts with https:// to prevent relative URL issues
+    // 2. Prepare Public Domain
     let publicDomain = env.R2_PUBLIC_DOMAIN || "";
     if (!publicDomain) {
         return new Response(JSON.stringify({ error: "R2_PUBLIC_DOMAIN environment variable is missing" }), { status: 500 });
@@ -92,66 +93,75 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
       publicDomain = `https://${publicDomain}`;
     }
 
+    // 3. List R2 Files
     const listing = await env.MUSIC_BUCKET.list();
     const audioFiles = listing.objects.filter(obj => 
       obj.key.endsWith('.mp3') || obj.key.endsWith('.wav') || obj.key.endsWith('.m4a') || obj.key.endsWith('.ogg')
     );
 
-    if (audioFiles.length === 0) {
-      return new Response(JSON.stringify({ message: "No audio files found in R2", added: 0 }), { status: 200 });
-    }
-
-    let addedCount = 0;
-
-    // Check DB for existing songs
+    // 4. Wipe Existing Data (Full Sync Strategy)
     try {
-        await env.DB.prepare("SELECT 1 FROM songs LIMIT 1").first();
+        await env.DB.prepare("DELETE FROM songs").run();
+        // Optional: Reset ID counter if using AUTOINCREMENT, but UUID/String IDs don't need it.
+        // await env.DB.prepare("DELETE FROM sqlite_sequence WHERE name='songs'").run(); 
     } catch (e) {
-        return new Response(JSON.stringify({ error: "Table 'songs' does not exist in D1." }), { status: 500 });
+        // If table doesn't exist, ignore error (or return error if strict)
+        return new Response(JSON.stringify({ error: "Table 'songs' likely missing. Run schema migration." }), { status: 500 });
     }
 
-    const existingResult = await env.DB.prepare("SELECT audio_url FROM songs").all<{ audio_url: string }>();
-    const existingUrls = new Set(existingResult.results.map(r => r.audio_url));
+    if (audioFiles.length === 0) {
+      return new Response(JSON.stringify({ message: "R2 is empty. Database cleared.", added: 0 }), { status: 200 });
+    }
 
+    // 5. Insert All Files
+    let addedCount = 0;
+    
+    // Using batch insert for performance could be better, but loop is safer for now 
+    // to handle individual errors without failing the whole batch in this simple setup.
+    // We will construct the logic to be robust.
+    
     for (const file of audioFiles) {
-      // FIX: Encode the file key to handle spaces and special characters
+      // Encode key components to handle spaces/special chars safely in URL
       const encodedKey = file.key.split('/').map(encodeURIComponent).join('/');
       const fileUrl = `${publicDomain}/${encodedKey}`;
 
-      // Check if this exact URL is already in DB
-      // Note: If the old DB had "domain.com/file.mp3" and new is "https://domain.com/file.mp3",
-      // this check returns false (not found), so it will insert the fixed version.
-      // This is actually good as it fixes the broken links, but might create duplicates.
-      if (!existingUrls.has(fileUrl)) {
-        const fileName = file.key.split('/').pop() || file.key;
-        const title = fileName.replace(/\.(mp3|wav|m4a|ogg)$/i, '').replace(/_/g, ' ');
+      const fileName = file.key.split('/').pop() || file.key;
+      // Remove extension and replace underscores with spaces for title
+      const title = fileName.replace(/\.(mp3|wav|m4a|ogg)$/i, '').replace(/_/g, ' ');
+      
+      // Generate metadata
+      // Use filename as seed for consistent images between syncs
+      const imageUrl = `https://picsum.photos/seed/${encodeURIComponent(fileName)}/400/400`;
+      const artist = "R2 Upload";
+      const style = "Imported Track";
+      
+      // Use the file's upload date or current time
+      const createdAt = file.uploaded ? new Date(file.uploaded).toISOString() : new Date().toISOString();
+
+      try {
+        await env.DB.prepare(
+          "INSERT INTO songs (title, artist, style, duration, audio_url, image_url, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)"
+        ).bind(title, artist, style, "Unknown", fileUrl, imageUrl, createdAt).run();
         
-        // Generate a deterministic-ish but random ID
-        const imageUrl = `https://picsum.photos/seed/${encodeURIComponent(title)}/400/400`;
-        const artist = "R2 Upload";
-        const style = "Imported Track";
-        const createdAt = new Date().toISOString();
-
-        try {
-          await env.DB.prepare(
-            "INSERT INTO songs (title, artist, style, duration, audio_url, image_url, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)"
-          ).bind(title, artist, style, "Unknown", fileUrl, imageUrl, createdAt).run();
-        } catch (err) {
-          // Fallback for older schemas without created_at column
-           await env.DB.prepare(
-            "INSERT INTO songs (title, artist, style, duration, audio_url, image_url) VALUES (?, ?, ?, ?, ?, ?)"
-          ).bind(title, artist, style, "Unknown", fileUrl, imageUrl).run();
-        }
-
         addedCount++;
+      } catch (err) {
+        // Fallback for older schemas without created_at
+         try {
+            await env.DB.prepare(
+                "INSERT INTO songs (title, artist, style, duration, audio_url, image_url) VALUES (?, ?, ?, ?, ?, ?)"
+            ).bind(title, artist, style, "Unknown", fileUrl, imageUrl).run();
+            addedCount++;
+         } catch (innerErr) {
+             console.error(`Failed to insert ${fileName}`, innerErr);
+         }
       }
     }
 
     return new Response(JSON.stringify({ 
       success: true, 
-      message: `Sync complete. Added ${addedCount} new songs.`,
+      message: `Full sync complete. Database cleared. Added ${addedCount} songs.`,
       added: addedCount,
-      total_scanned: audioFiles.length
+      total_in_r2: audioFiles.length
     }), {
       headers: { 'Content-Type': 'application/json' }
     });
