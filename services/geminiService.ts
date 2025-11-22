@@ -4,7 +4,12 @@ import { Song, Language } from "../types";
 // Helper to generate a random ID (still used for error fallback)
 const generateId = () => Math.random().toString(36).substring(2, 15);
 
-export const generateSongConcept = async (prompt: string, language: Language = 'en'): Promise<Song> => {
+export const generateSongConcept = async (
+  prompt: string, 
+  language: Language = 'en',
+  isInstrumental: boolean = false,
+  model: string = 'gemini-2.5'
+): Promise<Song> => {
   try {
     // Call the backend API (Cloudflare Function)
     // This ensures the API KEY is kept secret on the server side
@@ -13,7 +18,7 @@ export const generateSongConcept = async (prompt: string, language: Language = '
         headers: {
             'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ prompt, language }),
+        body: JSON.stringify({ prompt, language, isInstrumental, model }),
     });
 
     const data = await response.json();

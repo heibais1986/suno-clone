@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { Sparkles, Loader2, Music4 } from 'lucide-react';
+import { Sparkles, Loader2, Music4, ChevronDown } from 'lucide-react';
 import { generateSongConcept } from '../services/geminiService';
 import { Song, Language } from '../types';
 import { TRANSLATIONS } from '../constants';
@@ -16,6 +16,11 @@ const CreateSection: React.FC<CreateSectionProps> = ({ onSongGenerated, language
   const [prompt, setPrompt] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
+  
+  // Selection State
+  const [isInstrumental, setIsInstrumental] = useState(false);
+  const [selectedModel, setSelectedModel] = useState('gemini-2.5');
+
   const t = TRANSLATIONS[language].create;
 
   const handleGenerate = async () => {
@@ -29,7 +34,7 @@ const CreateSection: React.FC<CreateSectionProps> = ({ onSongGenerated, language
     
     setIsLoading(true);
     try {
-      const song = await generateSongConcept(prompt, language);
+      const song = await generateSongConcept(prompt, language, isInstrumental, selectedModel);
       onSongGenerated(song);
       setPrompt('');
     } catch (e) {
@@ -52,11 +57,41 @@ const CreateSection: React.FC<CreateSectionProps> = ({ onSongGenerated, language
             className={`w-full bg-transparent text-lg text-white placeholder:text-zinc-500 px-6 py-4 focus:outline-none resize-none transition-all duration-300 ${isExpanded ? 'h-32' : 'h-16'}`}
            />
            
-           <div className={`flex items-center justify-between px-4 pb-3 ${isExpanded ? 'opacity-100' : 'opacity-0 h-0 overflow-hidden'} transition-all duration-300`}>
-              <div className="flex gap-2">
-                 <span className="text-xs font-medium text-zinc-500 uppercase tracking-wider">{t.mode}: <span className="text-white">{t.custom}</span></span>
-                 <span className="text-xs font-medium text-zinc-500 uppercase tracking-wider ml-4">{t.model}: <span className="text-white">Gemini 2.5</span></span>
+           <div className={`flex items-center justify-between px-6 pb-4 ${isExpanded ? 'opacity-100' : 'opacity-0 h-0 overflow-hidden'} transition-all duration-300`}>
+              <div className="flex items-center gap-6">
+                  {/* Mode Selector */}
+                  <div className="flex items-center gap-2 relative">
+                       <span className="text-xs font-medium text-zinc-500 uppercase tracking-wider">{t.mode}:</span>
+                       <div className="relative group">
+                           <select
+                              value={isInstrumental ? 'instrumental' : 'custom'}
+                              onChange={(e) => setIsInstrumental(e.target.value === 'instrumental')}
+                              className="appearance-none bg-transparent text-white font-bold text-sm pr-5 cursor-pointer focus:outline-none hover:text-zinc-300 transition-colors"
+                           >
+                              <option value="custom" className="bg-zinc-900 text-zinc-300">{t.custom}</option>
+                              <option value="instrumental" className="bg-zinc-900 text-zinc-300">{t.instrumental}</option>
+                           </select>
+                           <ChevronDown className="w-3 h-3 text-zinc-400 absolute right-0 top-1/2 -translate-y-1/2 pointer-events-none" />
+                       </div>
+                  </div>
+
+                  {/* Model Selector */}
+                  <div className="flex items-center gap-2 relative">
+                       <span className="text-xs font-medium text-zinc-500 uppercase tracking-wider">{t.model}:</span>
+                        <div className="relative group">
+                           <select
+                              value={selectedModel}
+                              onChange={(e) => setSelectedModel(e.target.value)}
+                              className="appearance-none bg-transparent text-white font-bold text-sm pr-5 cursor-pointer focus:outline-none hover:text-zinc-300 transition-colors"
+                           >
+                              <option value="gemini-2.5" className="bg-zinc-900 text-zinc-300">Gemini 2.5</option>
+                              <option value="gemini-3.0" className="bg-zinc-900 text-zinc-300">Gemini 3.0</option>
+                           </select>
+                           <ChevronDown className="w-3 h-3 text-zinc-400 absolute right-0 top-1/2 -translate-y-1/2 pointer-events-none" />
+                       </div>
+                  </div>
               </div>
+
               <button 
                 onClick={handleGenerate}
                 disabled={isLoading || !prompt}
