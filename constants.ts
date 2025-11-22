@@ -1,3 +1,4 @@
+
 import { Song, Language } from "./types";
 
 export const TRANSLATIONS = {
@@ -117,8 +118,8 @@ export const TRANSLATIONS = {
   }
 };
 
-// Using a free creative commons audio sample for demonstration
-const DEMO_AUDIO = "https://cdn.freesound.org/previews/719/719349_5034008-lq.mp3";
+// Using a reliable creative commons audio sample (Chill Lofi from Pixabay)
+const DEMO_AUDIO = "https://cdn.pixabay.com/audio/2022/03/15/audio_c8c8a73467.mp3";
 
 const SAMPLE_SONGS_EN: Song[] = [
   {
