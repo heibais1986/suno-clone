@@ -125,7 +125,7 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
     });
 
     const data = JSON.parse(textResponse.text || "{}") as SongConcept;
-    const songId = crypto.randomUUID(); // Unique ID for this generation
+    const songId = crypto.randomUUID(); // Unique ID for R2 Filenames (not DB ID)
 
     // 4. Generate Image
     let imageBase64: string | null = null;
@@ -158,10 +158,14 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
         }
 
         // B. Upload Audio to R2 (Fetch demo audio and store it as a unique file)
-        // In a real app, you would generate audio bytes here. 
-        // For now, we fetch the demo file and upload it so it persists in YOUR bucket.
         try {
-            const demoAudioRes = await fetch(finalAudioUrl);
+            // CRITICAL FIX: Add User-Agent to prevent 403 Forbidden from Pixabay/External servers
+            const demoAudioRes = await fetch(finalAudioUrl, {
+                headers: {
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+                }
+            });
+
             if (demoAudioRes.ok) {
                 const audioBlob = await demoAudioRes.arrayBuffer();
                 const audioKey = `tracks/${songId}.mp3`;
@@ -169,17 +173,20 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
                     httpMetadata: { contentType: 'audio/mpeg' }
                 });
                 finalAudioUrl = `${publicDomain}/${audioKey}`;
+            } else {
+                console.error("Failed to fetch demo audio source:", demoAudioRes.status, demoAudioRes.statusText);
             }
         } catch (err) {
             console.error("Failed to upload audio to R2", err);
         }
 
         // C. Insert into DB
+        // CRITICAL FIX: Do NOT insert 'id'. Let the DB auto-increment the integer primary key.
+        // Inserting a UUID string into an INTEGER PRIMARY KEY will fail silently or throw error.
         try {
             await env.DB.prepare(
-                "INSERT INTO songs (id, title, artist, style, duration, audio_url, image_url, lyrics, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"
+                "INSERT INTO songs (title, artist, style, duration, audio_url, image_url, lyrics, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
             ).bind(
-                songId,
                 data.title || "Untitled",
                 data.artist || "AI Artist",
                 data.style || "Unknown",
@@ -191,12 +198,12 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
             ).run();
         } catch (dbErr) {
             console.error("DB Insert failed", dbErr);
-            // We continue returning the song even if DB save fails, 
-            // so the user sees it in the UI immediately.
         }
     }
 
     // 6. Return Response
+    // We return the UUID 'songId' to the UI so the key is unique in the React list immediately.
+    // When the user refreshes, they will get the DB ID (Integer) from /api/songs, which is fine.
     const songData = {
       id: songId,
       title: data.title || "Untitled",
