@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+
+import React, { useState, useEffect } from 'react';
 import { X, Loader2, Mail, Lock, AlertCircle } from 'lucide-react';
 import { Language } from '../types';
 import { TRANSLATIONS } from '../constants';
@@ -7,50 +8,65 @@ interface AuthModalProps {
   isOpen: boolean;
   onClose: () => void;
   language: Language;
+  initialMode?: 'login' | 'signup';
+  onLoginSuccess?: () => void;
 }
 
-const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, language }) => {
-  const [isSignup, setIsSignup] = useState(true);
+const AuthModal: React.FC<AuthModalProps> = ({ 
+  isOpen, 
+  onClose, 
+  language, 
+  initialMode = 'signup',
+  onLoginSuccess
+}) => {
+  const [isSignup, setIsSignup] = useState(initialMode === 'signup');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
 
-  if (!isOpen) return null;
-
   const t = TRANSLATIONS[language].auth;
+
+  useEffect(() => {
+    if (isOpen) {
+      setIsSignup(initialMode === 'signup');
+      setError('');
+      setSuccess(false);
+      setEmail('');
+      setPassword('');
+    }
+  }, [isOpen, initialMode]);
+
+  if (!isOpen) return null;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     setIsLoading(true);
 
+    const endpoint = isSignup ? '/api/auth/register' : '/api/auth/login';
+
     try {
-      // Attempt to fetch from the API
-      const res = await fetch('/api/auth/register', {
+      const res = await fetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password }),
       });
 
-      // CRITICAL FIX: We must handle non-JSON responses (like 404 HTML pages)
-      // generated when the backend function is not running.
+      // Handle non-JSON responses (deployment issues)
       const text = await res.text();
       let data;
       
       try {
         data = JSON.parse(text);
       } catch (parseError) {
-        // If parsing fails, it means the response wasn't JSON (likely HTML 404 from static host)
-        // This implies the Backend API is not deployed or reachable.
-        // We force a "Demo Mode" success here.
-        console.warn("API response was not JSON. Assuming static deployment. Switching to Demo Mode.");
+        console.warn("API response was not JSON. Switching to Demo Mode.");
         throw new Error("DEMO_MODE_FALLBACK");
       }
 
       if (!res.ok) {
-        throw new Error(data.error || 'Registration failed');
+        throw new Error(data.error || (isSignup ? 'Registration failed' : 'Login failed'));
       }
 
       // Real backend success
@@ -59,23 +75,18 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, language }) => {
     } catch (err) {
       // Handle errors
       if (err instanceof Error && err.message === "DEMO_MODE_FALLBACK") {
-         // Use fallback success for demo purposes
          handleSuccess();
       } else if (err instanceof Error && (err.message.includes('Failed to fetch') || err.message.includes('NetworkError'))) {
-         // Network error (e.g. offline) -> Demo success
          handleSuccess();
       } else {
-         // Display actual logic error (e.g. "User already exists") if valid
-         // But if it's a weird system error, we default to success to keep the demo alive
          console.error("Auth Error:", err);
-         // If it's a specific error we generated from the backend, show it.
-         // Otherwise, fall back to success for the demo experience.
-         if (err instanceof Error && err.message !== 'Registration failed') {
-            // Check for known backend errors
-            if(err.message.includes("exists")) {
-                setError(err.message);
+         if (err instanceof Error) {
+            // Pass through specific messages like "User already exists" or "Invalid credentials"
+            if (err.message !== 'Registration failed' && err.message !== 'Login failed') {
+                 setError(err.message);
             } else {
-                handleSuccess();
+                // Fallback general error
+                setError(t.error);
             }
          } else {
             setError(t.error);
@@ -90,7 +101,12 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, language }) => {
     setSuccess(true);
     setTimeout(() => {
        setSuccess(false);
-       onClose();
+       if (onLoginSuccess) onLoginSuccess();
+       // If strict onLoginSuccess handling, maybe don't close immediately? 
+       // But UX wise, success -> close is good.
+       // Note: App.tsx handles closing when onLoginSuccess calls setIsAuthModalOpen(false).
+       // So we don't need to call onClose() explicitly if onLoginSuccess does it.
+       if (!onLoginSuccess) onClose(); 
     }, 1500);
   };
 
@@ -124,7 +140,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, language }) => {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
                 </svg>
               </div>
-              {t.success}
+              {isSignup ? t.success : (language === 'zh' ? '登录成功' : 'Login Successful')}
            </div>
         ) : (
             <form onSubmit={handleSubmit} className="space-y-4">
@@ -183,7 +199,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, language }) => {
                 setIsSignup(!isSignup);
                 setError('');
             }}
-            className="text-sm text-zinc-400 hover:text-white transition-colors"
+            className="text-sm text-zinc-400 hover:text-white transition-colors underline underline-offset-4"
           >
             {isSignup ? t.toggleToLogin : t.toggleToSignup}
           </button>

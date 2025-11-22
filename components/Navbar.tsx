@@ -1,13 +1,15 @@
 
 import React, { useState, useEffect } from 'react';
-import { Music, Search, Menu, X, Globe, RefreshCw, Loader2 } from 'lucide-react';
+import { Music, Search, Menu, X, Globe, RefreshCw, Loader2, LogOut, User } from 'lucide-react';
 import { Language } from '../types';
 import { TRANSLATIONS } from '../constants';
 
 interface NavbarProps {
   language: Language;
   setLanguage: (lang: Language) => void;
-  onOpenAuth: () => void;
+  onOpenAuth: (mode: 'login' | 'signup') => void;
+  isLoggedIn: boolean;
+  onLogout: () => void;
   searchQuery: string;
   setSearchQuery: (query: string) => void;
 }
@@ -16,6 +18,8 @@ const Navbar: React.FC<NavbarProps> = ({
   language, 
   setLanguage, 
   onOpenAuth,
+  isLoggedIn,
+  onLogout,
   searchQuery,
   setSearchQuery
 }) => {
@@ -117,12 +121,30 @@ const Navbar: React.FC<NavbarProps> = ({
             {language === 'en' ? 'EN' : '中文'}
           </button>
 
-          <button 
-            onClick={onOpenAuth}
-            className="font-semibold text-sm text-black bg-white hover:bg-zinc-200 px-5 py-2 rounded-full transition-colors whitespace-nowrap"
-          >
-            {t.signup}
-          </button>
+          {isLoggedIn ? (
+             <button 
+               onClick={onLogout}
+               className="font-semibold text-sm text-white bg-zinc-800 hover:bg-zinc-700 border border-white/10 px-4 py-2 rounded-full transition-colors flex items-center gap-2"
+             >
+               <User className="w-4 h-4" />
+               {language === 'zh' ? '退出' : 'Log out'}
+             </button>
+          ) : (
+            <>
+              <button 
+                onClick={() => onOpenAuth('login')}
+                className="font-semibold text-sm text-white hover:text-zinc-300 transition-colors px-2"
+              >
+                {t.login}
+              </button>
+              <button 
+                onClick={() => onOpenAuth('signup')}
+                className="font-semibold text-sm text-black bg-white hover:bg-zinc-200 px-5 py-2 rounded-full transition-colors whitespace-nowrap"
+              >
+                {t.signup}
+              </button>
+            </>
+          )}
         </div>
 
         {/* Mobile Actions (Visible on mobile) - Fixed layout */}
@@ -134,12 +156,30 @@ const Navbar: React.FC<NavbarProps> = ({
              {isSyncing ? <Loader2 className="w-5 h-5" /> : <RefreshCw className="w-5 h-5" />}
           </button>
 
-          <button 
-            onClick={onOpenAuth}
-            className="font-semibold text-xs text-black bg-white active:bg-zinc-200 px-3 py-1.5 rounded-full transition-colors whitespace-nowrap"
-          >
-            {t.signup}
-          </button>
+          {isLoggedIn ? (
+              <button 
+                onClick={onLogout}
+                className="font-semibold text-xs text-white bg-zinc-800 border border-white/10 px-3 py-1.5 rounded-full"
+              >
+                <LogOut className="w-4 h-4" />
+              </button>
+          ) : (
+            <>
+             <button 
+                onClick={() => onOpenAuth('login')}
+                className="font-semibold text-xs text-white px-2"
+              >
+                {t.login}
+              </button>
+              <button 
+                onClick={() => onOpenAuth('signup')}
+                className="font-semibold text-xs text-black bg-white active:bg-zinc-200 px-3 py-1.5 rounded-full transition-colors whitespace-nowrap"
+              >
+                {t.signup}
+              </button>
+            </>
+          )}
+          
           <button 
             className="text-white p-1 active:scale-90 transition-transform"
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}

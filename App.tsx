@@ -20,7 +20,11 @@ const App: React.FC = () => {
   const [currentSong, setCurrentSong] = useState<Song | null>(null);
   // Default language set to Chinese
   const [language, setLanguage] = useState<Language>('zh'); 
+  
+  // Auth State
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [authMode, setAuthMode] = useState<'login' | 'signup'>('signup');
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
 
   // Search State
   const [searchQuery, setSearchQuery] = useState('');
@@ -30,6 +34,14 @@ const App: React.FC = () => {
   const [repeatMode, setRepeatMode] = useState<'off' | 'all' | 'one'>('off');
 
   const t = TRANSLATIONS[language].app;
+
+  // Check for existing session (Simple localStorage implementation for demo)
+  useEffect(() => {
+    const savedLogin = localStorage.getItem('is_logged_in');
+    if (savedLogin === 'true') {
+      setIsLoggedIn(true);
+    }
+  }, []);
 
   // Fetch real songs from backend on load
   useEffect(() => {
@@ -167,6 +179,22 @@ const App: React.FC = () => {
     setCurrentSong(newSong); // Auto play generated song
   };
 
+  const handleOpenAuth = (mode: 'login' | 'signup') => {
+    setAuthMode(mode);
+    setIsAuthModalOpen(true);
+  };
+
+  const handleLoginSuccess = () => {
+    setIsLoggedIn(true);
+    localStorage.setItem('is_logged_in', 'true');
+    setIsAuthModalOpen(false);
+  };
+
+  const handleLogout = () => {
+    setIsLoggedIn(false);
+    localStorage.removeItem('is_logged_in');
+  };
+
   // --- Enhanced Drag to Scroll Logic ---
   const createDragHandler = () => {
     const scrollRef = useRef<HTMLDivElement>(null);
@@ -217,20 +245,23 @@ const App: React.FC = () => {
       <Navbar 
         language={language} 
         setLanguage={setLanguage} 
-        onOpenAuth={() => setIsAuthModalOpen(true)}
+        onOpenAuth={handleOpenAuth}
+        isLoggedIn={isLoggedIn}
+        onLogout={handleLogout}
         searchQuery={searchQuery}
         setSearchQuery={setSearchQuery}
       />
       
       <main>
-        {/* Only show Hero and Marquee if NOT searching to reduce clutter, or keep them? 
-            Standard practice: Keep them, but maybe user wants to focus on results.
-            Let's keep them for now as per "filter existing lists" strategy. 
-        */}
         <Hero language={language} />
         
         <div className="relative z-20">
-           <CreateSection onSongGenerated={handleSongGenerated} language={language} />
+           <CreateSection 
+             onSongGenerated={handleSongGenerated} 
+             language={language} 
+             isLoggedIn={isLoggedIn}
+             onOpenAuth={handleOpenAuth}
+           />
            
            <div className="mt-16 mb-8 border-y border-white/5 bg-black/20 backdrop-blur-sm py-2">
              <Marquee language={language} songs={baseSongs} />
@@ -285,7 +316,7 @@ const App: React.FC = () => {
                </div>
              </section>
 
-             {/* Only show New Releases if there are results and we aren't heavily searching (optional, but let's show filtered new releases too) */}
+             {/* New Releases */}
              {newReleases.length > 0 && (
                  <section>
                    <div className="flex items-center justify-between mb-6 px-2">
@@ -336,6 +367,8 @@ const App: React.FC = () => {
         isOpen={isAuthModalOpen} 
         onClose={() => setIsAuthModalOpen(false)} 
         language={language}
+        initialMode={authMode}
+        onLoginSuccess={handleLoginSuccess}
       />
 
       {currentSong?.lyrics && (

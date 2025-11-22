@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Sparkles, Loader2, Music4 } from 'lucide-react';
 import { generateSongConcept } from '../services/geminiService';
@@ -7,15 +8,23 @@ import { TRANSLATIONS } from '../constants';
 interface CreateSectionProps {
   onSongGenerated: (song: Song) => void;
   language: Language;
+  isLoggedIn: boolean;
+  onOpenAuth: (mode: 'login' | 'signup') => void;
 }
 
-const CreateSection: React.FC<CreateSectionProps> = ({ onSongGenerated, language }) => {
+const CreateSection: React.FC<CreateSectionProps> = ({ onSongGenerated, language, isLoggedIn, onOpenAuth }) => {
   const [prompt, setPrompt] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
   const t = TRANSLATIONS[language].create;
 
   const handleGenerate = async () => {
+    // Authentication Check
+    if (!isLoggedIn) {
+       onOpenAuth('login');
+       return;
+    }
+
     if (!prompt.trim()) return;
     
     setIsLoading(true);
@@ -63,7 +72,7 @@ const CreateSection: React.FC<CreateSectionProps> = ({ onSongGenerated, language
              <div className="absolute right-2 top-2 bottom-2">
                 <button 
                   onClick={handleGenerate}
-                  disabled={isLoading || !prompt}
+                  disabled={isLoading || (!prompt && isLoggedIn)} // Allow clicking if not logged in even if empty, to show auth
                   className="h-full bg-white text-black px-6 rounded-xl font-bold hover:bg-zinc-200 disabled:opacity-50 transition-colors flex items-center gap-2"
                 >
                   {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : t.button}
