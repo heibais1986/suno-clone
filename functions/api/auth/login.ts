@@ -40,6 +40,60 @@ interface Env {
   DB: D1Database;
 }
 
+// --- Security Helpers ---
+
+function buf2hex(buffer: ArrayBuffer) {
+  return [...new Uint8Array(buffer)]
+      .map(x => x.toString(16).padStart(2, '0'))
+      .join('');
+}
+
+function hex2buf(hex: string) {
+    return new Uint8Array(hex.match(/.{1,2}/g)?.map(byte => parseInt(byte, 16)) || []);
+}
+
+async function verifyPassword(inputPassword: string, storedPasswordString: string): Promise<boolean> {
+  // storedPasswordString format: "saltHex:hashHex"
+  const parts = storedPasswordString.split(':');
+  if (parts.length !== 2) return false;
+
+  const [saltHex, originalHashHex] = parts;
+  const salt = hex2buf(saltHex);
+  
+  const encoder = new TextEncoder();
+  const keyMaterial = await crypto.subtle.importKey(
+    "raw", 
+    encoder.encode(inputPassword), 
+    { name: "PBKDF2" }, 
+    false, 
+    ["deriveBits"]
+  );
+
+  // Recalculate hash using the EXTRACTED salt and SAME iterations
+  const hashBuffer = await crypto.subtle.deriveBits(
+    { 
+      name: "PBKDF2", 
+      salt: salt, 
+      iterations: 100000, 
+      hash: "SHA-256" 
+    }, 
+    keyMaterial, 
+    256
+  );
+
+  const newHashHex = buf2hex(hashBuffer);
+  
+  // Constant-time comparison is better, but for this context string comparison is acceptable
+  return newHashHex === originalHashHex;
+}
+
+interface UserRow {
+  id: unknown;
+  email: string;
+  password: string;
+  [key: string]: any;
+}
+
 export const onRequestPost: PagesFunction<Env> = async (context) => {
   try {
     const { request, env } = context;
@@ -49,28 +103,30 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
       return new Response(JSON.stringify({ error: "Missing email or password" }), { status: 400 });
     }
 
-    // MOCK MODE: If DB is not bound, allow a specific demo account or fail
+    // MOCK MODE
     if (!env.DB) {
-        // For demo purposes without DB:
         if (email.includes('demo')) {
              return new Response(JSON.stringify({ success: true, user: { email, id: 'demo' } }), { status: 200 });
         }
         return new Response(JSON.stringify({ error: "Mock Mode: Database not connected. Use 'demo' in email to bypass." }), { status: 401 });
     }
 
-    // Replicate the hashing logic from register.ts
-    const myText = new TextEncoder().encode(password + "SALT_SECRET"); 
-    const hashBuffer = await crypto.subtle.digest('SHA-256', myText);
-    const hashArray = Array.from(new Uint8Array(hashBuffer));
-    const passwordHash = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-
-    // Check credentials
+    // Retrieve user record including the stored password hash
     const user = await env.DB.prepare(
-      "SELECT id, email FROM users WHERE email = ? AND password = ?"
-    ).bind(email, passwordHash).first();
+      "SELECT * FROM users WHERE email = ?"
+    ).bind(email).first<UserRow>();
 
-    if (user) {
-      return new Response(JSON.stringify({ success: true, user }), { status: 200 });
+    if (!user) {
+      return new Response(JSON.stringify({ error: "Invalid email or password" }), { status: 401 });
+    }
+
+    // Verify Password
+    const isValid = await verifyPassword(password, user.password);
+
+    if (isValid) {
+      // Remove password from response
+      const { password: _, ...userWithoutPassword } = user;
+      return new Response(JSON.stringify({ success: true, user: userWithoutPassword }), { status: 200 });
     } else {
       return new Response(JSON.stringify({ error: "Invalid email or password" }), { status: 401 });
     }
